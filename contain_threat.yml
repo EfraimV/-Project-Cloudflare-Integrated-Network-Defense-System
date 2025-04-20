@@ -1,0 +1,22 @@
+- name: "CONTAIN COMPROMISED HOST"
+  hosts: edge_routers
+  vars:
+    malicious_ip: "{{ lookup('file', 'malicious_ip.txt') }}"
+  tasks:
+    - name: "BLOCK IP AT EDGE"
+      cisco.ios.ios_acl:
+        name: "CF_BLOCKLIST"
+        lines: "deny ip host {{ malicious_ip }} any"
+        state: present
+
+    - name: "ISOLATE VPC"
+      aws.ec2.security_group:
+        group_id: "sg-123456"
+        ip_permissions:
+          - from_port: 0
+            to_port: 65535
+            ip_protocol: "-1"
+            ip_ranges: 
+              - cidr_ip: "{{ malicious_ip }}/32"
+                description: "Cloudflare-identified threat"
+            action: "revoke"
